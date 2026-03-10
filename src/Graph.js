@@ -9,68 +9,52 @@ function Graph({ nodes = [], connections = [], selected, handleSelect }) {
 
   const cyRef = useRef(null);
 
-  /*
-  Cytoscape elements生成
-  */
-
   const elements = [];
 
   nodes.forEach((node) => {
-
     elements.push({
-
       data: {
         id: node.id,
-        label: `${node.text} (${node.frequency})`,
-        color: node.color,
-        frequency: node.frequency
+        label: node.text,
+        color: node.color
       }
-
     });
-
   });
 
   connections.forEach((conn, index) => {
-
     elements.push({
-
       data: {
         id: "e" + index,
         source: conn.from,
         target: conn.to
       }
-
     });
-
   });
 
-  /*
-  レイアウト
-  */
-
+  // レイアウト制御
   useEffect(() => {
 
     if (!cyRef.current) return;
 
-    const layout = cyRef.current.layout({
+    const cy = cyRef.current;
 
+    const layout = cy.layout({
       name: "cola",
+
       animate: true,
+      randomize: false,
 
-      nodeSpacing: 20,
-      edgeLengthVal: 80,
+      nodeSpacing: 50,
+      edgeLengthVal: 120,
 
-      gravity: 0.8,
-
-      infinite: true,
-      convergenceThreshold: 0.03,
-      avoidOverlap: true
-
+      avoidOverlap: true,
+      fit: true,
+      padding: 50
     });
 
     layout.run();
 
-  }, [nodes, connections]);
+  }, [nodes.length, connections.length]);
 
   return (
 
@@ -84,7 +68,7 @@ function Graph({ nodes = [], connections = [], selected, handleSelect }) {
 
           const id = evt.target.id();
 
-          handleSelect?.(id);
+          if (handleSelect) handleSelect(id);
 
         });
 
@@ -94,40 +78,33 @@ function Graph({ nodes = [], connections = [], selected, handleSelect }) {
 
       style={{
         width: "100%",
-        height: "500px",
+        height: "100%",
         background: "#f8f9fa"
       }}
 
       stylesheet={[
-
         {
           selector: "node",
           style: {
 
             label: "data(label)",
-
-            /*
-            frequencyに応じてサイズ変更
-            */
-
-            width: "mapData(frequency, 1, 10, 120, 240)",
-            height: "mapData(frequency, 1, 10, 60, 120)",
-
             shape: "roundrectangle",
 
-            "text-wrap": "wrap",
-            "text-max-width": 120,
+            width: 160,
+            height: 60,
 
             "text-valign": "center",
             "text-halign": "center",
 
-            "background-color": "data(color)",
+            "text-wrap": "wrap",
+            "text-max-width": 120,
 
-            color: "#fff"
+            "background-color": "data(color)",
+            color: "#fff",
+            "font-size": 13
 
           }
         },
-
         {
           selector: "edge",
           style: {
@@ -138,7 +115,6 @@ function Graph({ nodes = [], connections = [], selected, handleSelect }) {
 
           }
         },
-
         {
           selector: `node[id = "${selected}"]`,
           style: {
@@ -148,7 +124,6 @@ function Graph({ nodes = [], connections = [], selected, handleSelect }) {
 
           }
         }
-
       ]}
 
     />
