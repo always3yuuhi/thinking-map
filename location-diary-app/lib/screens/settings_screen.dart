@@ -17,6 +17,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _obscureKey = true;
   bool _savingKey = false;
   bool _apiKeyFieldTouched = false;
+  bool _trackingEnabled = false;
+  bool _togglingTracking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrackingState();
+  }
+
+  Future<void> _loadTrackingState() async {
+    try {
+      final running = await ref
+          .read(backgroundLocationServiceProvider)
+          .isRunning();
+      if (mounted) setState(() => _trackingEnabled = running);
+    } catch (_) {
+      // Platform doesn't support the background service (e.g. this screen
+      // rendered on desktop/web) or the plugin isn't ready yet — treat as
+      // "not running" rather than crashing the settings screen.
+    }
+  }
 
   @override
   void dispose() {
@@ -33,6 +54,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('バックグラウンドで位置情報を自動収集'),
+            subtitle: const Text(
+              '実機でのみ動作します。有効にすると位置情報の権限を確認します。',
+            ),
+            value: _trackingEnabled,
+            onChanged: _togglingTracking ? null : _toggleTracking,
+          ),
+          const Divider(height: 32),
           Text('位置情報取得頻度', style: Theme.of(context).textTheme.titleMedium),
           DropdownButton<int>(
             value: _intervalMinutes,
@@ -159,6 +190,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _apiKeyFieldTouched = false;
     } finally {
       if (mounted) setState(() => _savingKey = false);
+    }
+  }
+
+  Future<void> _toggleTracking(bool enable) async {
+    setState(() => _togglingTracking = true);
+    final backgroundService = ref.read(backgroundLocationServiceProvider);
+    try {
+      if (enable) {
+        await ref.read(locationServiceProvider).ensurePermissions();
+        await backgroundService.configure();
+        await backgroundService.start();
+      } else {
+        await backgroundService.stop();
+      }
+      if (mounted) setState(() => _trackingEnabled = enable);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('切り替えに失敗しました: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _togglingTracking = false);
     }
   }
 }
